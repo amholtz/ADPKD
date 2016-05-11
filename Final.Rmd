@@ -1,0 +1,232 @@
+---
+title: "Final"
+author: "Andrew"
+date: "May 3, 2016"
+output: html_document
+---
+
+```{r, echo=FALSE, warning = FALSE}
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(plotly))
+suppressPackageStartupMessages(library(tidyr))
+suppressPackageStartupMessages(library(stringr))
+suppressPackageStartupMessages(library(knitr))
+```
+
+
+```{r, echo=TRUE, warning=FALSE}
+PKD1 <- read.csv("PKD1.csv")
+PKD2 <- read.csv("PKD2.csv")
+
+
+
+#Top mutations by clinical significance
+PKD1_CS <- PKD1 %>% 
+  select(Region, Codon, Amino.Acid.Change, Mutation.Type, Clinical.Significance) %>% 
+  group_by(Clinical.Significance, Region) %>% 
+  tally() %>% 
+  filter(n!=1) %>% 
+  filter(Clinical.Significance != "Likely Hypomorphic") %>% 
+  filter(Clinical.Significance != "Indeterminate") %>% 
+  arrange(desc(n)) %>% 
+  top_n(5)
+
+PKD1_CS$Region <- factor(PKD1_CS$Region, levels = 
+                                PKD1_CS$Region[order(-PKD1_CS$n)])
+
+a <- ggplot(PKD1_CS, aes( x = Region, y = n, fill=Clinical.Significance)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Total Number of Mutations in PKD1 Gene by Exon", 
+       y = "# of Mutations") + coord_flip()
+ggplotly()
+
+
+#PKD2
+PKD2_CS <- PKD2 %>% 
+  select(Region, Codon, Amino.Acid.Change, Mutation.Type, Clinical.Significance) %>% 
+  group_by(Clinical.Significance, Region) %>% 
+  tally() %>% 
+  filter(n!=1) %>% 
+  filter(Clinical.Significance != "Likely Hypomorphic") %>% 
+  filter(Clinical.Significance != "Indeterminate") %>% 
+  arrange(desc(n)) %>% 
+  top_n(5)
+
+PKD2_CS$Region <- factor(PKD2_CS$Region, levels = 
+                           PKD2_CS$Region[order(-PKD2_CS$n)])
+
+b <- ggplot(PKD2_CS, aes( x = Region, y = n, fill=Clinical.Significance)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Total Number of Mutations in PKD2 Gene by Exon", 
+       y = "# of Mutations") + coord_flip()
+ggplotly()
+
+#Mutation Type vs. Clinical Significance
+PKD1_MT <- PKD1 %>% 
+  select(Region, Codon, Amino.Acid.Change, Mutation.Type, Clinical.Significance) %>% 
+  group_by(Clinical.Significance, Mutation.Type) %>% 
+  tally() %>% 
+  filter(n!=1) %>% 
+  filter(Clinical.Significance != "Likely Hypomorphic") %>% 
+  filter(Clinical.Significance != "Indeterminate") %>% 
+  filter(Mutation.Type != "SYNONYMOUS") %>% 
+  arrange(Clinical.Significance) %>% 
+  arrange(desc(n)) 
+
+PKD1_MT$Mutation.Type <- factor(PKD1_MT$Mutation.Type, levels = 
+                           PKD1_MT$Mutation.Type[order(-PKD1_MT$n)])
+
+c <- ggplot(PKD1_MT, aes(x = Mutation.Type, y = n, fill= Clinical.Significance)) + 
+  geom_bar(stat = "Identity") + 
+  labs(title = "Total Number of Mutations in PKD1 Gene by Mutation Type", 
+       y = "# of Mutations", x = "Mutation Type") + coord_flip()
+ggplotly()
+
+PKD2_MT <- PKD2 %>% 
+  select(Region, Codon, Amino.Acid.Change, Mutation.Type, Clinical.Significance) %>% 
+  group_by(Clinical.Significance, Mutation.Type) %>% 
+  tally() %>% 
+  filter(n!=1) %>% 
+  filter(Clinical.Significance != "Likely Hypomorphic") %>% 
+  filter(Clinical.Significance != "Indeterminate") %>% 
+  filter(Mutation.Type != "SYNONYMOUS") %>% 
+  arrange(Clinical.Significance) %>% 
+  arrange(desc(n)) 
+
+PKD2_MT$Mutation.Type <- factor(PKD2_MT$Mutation.Type, levels = 
+                                  PKD2_MT$Mutation.Type[order(-PKD2_MT$n)])
+
+d <- ggplot(PKD2_MT, aes(x = Mutation.Type, y = n, fill= Clinical.Significance)) + 
+  geom_bar(stat = "Identity") + 
+  labs(title = "Total Number of Mutations in PKD2 Gene by Mutation Type", 
+       y = "# of Mutations", x =  "Type of Mutation") + coord_flip()
+ggplotly()
+
+
+
+```
+
+``` {r, echo = FALSE, eval = TRUE, warning = FALSE}
+
+aminoacid <- read.csv("~/Dropbox/Senior Spring/Bioinformatics/Final Project/ADPKD/aminoacid.csv")
+
+#Amino Acids
+PKD1_AA <- PKD1 %>% 
+  select(Amino.Acid.Change, Mutation.Type, Clinical.Significance) %>% 
+  group_by(Clinical.Significance, Amino.Acid.Change) %>% 
+  filter(Mutation.Type == "SUBSTITUTION") %>% 
+  filter(Clinical.Significance != "Likely Hypomorphic") %>% 
+  filter(Clinical.Significance != "Indeterminate") %>% 
+  filter(Amino.Acid.Change != "Likely Silent") %>% 
+  arrange(Clinical.Significance)
+
+v <- data.frame(AA =PKD1_AA$Amino.Acid.Change)
+
+v <- v %>% 
+  mutate(orig = str_sub(v$AA, 1, 3)) %>% 
+  mutate(chng = str_sub(v$AA, -3,-1))
+
+orig_AA <- data.frame(AA = v$orig)
+chng_AA <- data.frame(AA = v$chng)
+
+PKD1_AA$orig <- str_sub(v$AA, 1, 3)
+PKD1_AA$chng <- str_sub(v$AA, -3,-1)
+  
+
+aminoacid <- aminoacid %>% 
+  select(AA, Biochem)
+
+orig_AA <- left_join(orig_AA, aminoacid, by = "AA")
+chng_AA <- left_join(chng_AA, aminoacid, by = "AA")
+
+PKD1_AA$orig_b <- orig_AA$Biochem
+PKD1_AA$chng_b <- chng_AA$Biochem
+
+PKD1_AA <- PKD1_AA %>% 
+  filter(!is.na(chng_b)) %>% 
+  unite(orig_chng, orig, chng, sep = ":") %>% 
+  unite(orig_chng_bio, orig_b, chng_b, sep = ":")
+
+PKD1_AA <- PKD1_AA %>%  
+  group_by(Clinical.Significance, orig_chng_bio) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  top_n(5)
+
+PKD1_AA$orig_chng_bio <- factor(PKD1_AA$orig_chng_bio, levels = 
+                                  PKD1_AA$orig_chng_bio[order(-PKD1_AA$n)])
+
+d <- ggplot(PKD1_AA, aes(x = orig_chng_bio, y = n, fill= Clinical.Significance)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Total Number of Mutations in PKD1 Gene by Amino Acid Substitution", 
+       y = "# of Mutations", x = "Amino Acid Substitution")
+ggplotly()
+
+w <- ggplot(PKD1_AA, aes(x = orig_chng_bio, y = n, fill= Clinical.Significance)) + 
+  geom_bar(stat = "identity", position = "fill") + 
+  labs(title = "Total Number of Mutations in PKD1 Gene by Amino Acid Substitution", 
+       y = "% of Mutations", x = "Amino Acid Substitution")
+ggplotly()
+
+PKD2_AA <- PKD2 %>% 
+  select(Amino.Acid.Change, Mutation.Type, Clinical.Significance) %>% 
+  group_by(Clinical.Significance, Amino.Acid.Change) %>% 
+  filter(Mutation.Type == "SUBSTITUTION") %>% 
+  filter(Clinical.Significance != "Likely Hypomorphic") %>% 
+  filter(Clinical.Significance != "Indeterminate") %>% 
+  filter(Amino.Acid.Change != "Likely Silent") %>% 
+  arrange(Clinical.Significance)
+
+r <- data.frame(AA =PKD2_AA$Amino.Acid.Change)
+
+r <- r %>% 
+  mutate(orig = str_sub(r$AA, 1, 3)) %>% 
+  mutate(chng = str_sub(r$AA, -3,-1))
+
+orig_AA <- data.frame(AA = r$orig)
+chng_AA <- data.frame(AA = r$chng)
+
+PKD2_AA$orig <- str_sub(r$AA, 1, 3)
+PKD2_AA$chng <- str_sub(r$AA, -3,-1)
+  
+
+aminoacid <- aminoacid %>% 
+  select(AA, Biochem)
+
+orig_AA <- left_join(orig_AA, aminoacid, by = "AA")
+chng_AA <- left_join(chng_AA, aminoacid, by = "AA")
+
+PKD2_AA$orig_b <- orig_AA$Biochem
+PKD2_AA$chng_b <- chng_AA$Biochem
+
+PKD2_AA <- PKD2_AA %>% 
+  filter(!is.na(chng_b)) %>% 
+  unite(orig_chng, orig, chng, sep = ":") %>% 
+  unite(orig_chng_bio, orig_b, chng_b, sep = ":")
+
+PKD2_AA <- PKD2_AA %>%  
+  group_by(Clinical.Significance, orig_chng_bio) %>% 
+  tally() %>% 
+  arrange(desc(n)) %>% 
+  top_n(5)
+
+PKD2_AA$orig_chng_bio <- factor(PKD2_AA$orig_chng_bio, levels = 
+                                  PKD2_AA$orig_chng_bio[order(-PKD2_AA$n)])
+
+m <- ggplot(PKD2_AA, aes(x = orig_chng_bio, y = n, fill= Clinical.Significance)) + 
+  geom_bar(stat = "identity") + 
+  labs(title = "Total Number of Mutations in PKD2 Gene by Amino Acid Substitution", 
+       y = "# of Mutations", x = "Amino Acid Substitution")
+ggplotly()
+
+n <- ggplot(PKD2_AA, aes(x = orig_chng_bio, y = n, fill= Clinical.Significance)) + 
+  geom_bar(stat = "identity", position = "fill") + 
+  labs(title = "Total Number of Mutations in PKD2 Gene by Amino Acid Substitution", 
+       y = "% of Mutations", x = "Amino Acid Substitution")
+ggplotly()
+
+
+```
+
+
